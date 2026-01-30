@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="org.ranc.mybatis_audit.repository.RevinfoMapper">
+    <resultMap id="BaseResultMap" type="org.ranc.mybatis_audit.model.Revinfo">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="rev" property="rev" jdbcType="BIGINT"/>
+        <result column="revtstmp" property="revtstmp" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        rev, revtstmp
+    </sql>
+
+    <select id="findByRev" resultMap="BaseResultMap" parameterType="long">
+        select
+        <include refid="Base_Column_List"/>
+        from `revinfo`
+        where rev = #{rev,jdbcType=BIGINT}
+    </select>
+
+    <insert id="newRev" parameterType="org.ranc.mybatis_audit.model.Revinfo" keyColumn="rev" useGeneratedKeys="true" keyProperty="rev">
+        insert into `revinfo` (revtstmp)
+        values (#{revtstmp,jdbcType=TIMESTAMP})
+    </insert>
+</mapper>

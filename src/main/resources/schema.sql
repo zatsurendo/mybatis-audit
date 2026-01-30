@@ -1,0 +1,35 @@
+CREATE TABLE IF NOT EXISTS `user` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `username` VARCHAR(50) NOT NULL,
+    `email` VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `item` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `name` VARCHAR(100) NOT NULL,
+    `price` INTEGER NOT NULL,
+
+    `version` BIGINT DEFAULT NULL,
+    `created_by` VARCHAR(50) DEFAULT NULL,
+    `updated_by` VARCHAR(50) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT NULL,
+    `updated_at` TIMESTAMP DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `item_audit` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `name` VARCHAR(100) NOT NULL,
+    `price` INTEGER NOT NULL,
+
+    `version` BIGINT DEFAULT NULL,
+    `revtype` INTEGER DEFAULT NULL,
+    `created_by` VARCHAR(50) DEFAULT NULL,
+    `updated_by` VARCHAR(50) DEFAULT NULL,
+    `created_at` TIMESTAMP DEFAULT NULL,
+    `updated_at` TIMESTAMP DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `revinfo` (
+    `rev` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `revtstmp` BIGINT NOT NULL
+);

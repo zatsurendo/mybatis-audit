@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="org.ranc.mybatis_audit.repository.UserMapper">
+    <resultMap id="BaseResultMap" type="org.ranc.mybatis_audit.model.User">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, email
+    </sql>
+
+    <select id="findById" resultMap="BaseResultMap" parameterType="long">
+        select
+        <include refid="Base_Column_List"/>
+        from `user`
+        where id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <select id="findByUsername" resultMap="BaseResultMap" parameterType="string">
+        select
+        <include refid="Base_Column_List"/>
+        from `user`
+        where username = #{username,jdbcType=VARCHAR}
+    </select>
+
+    <select id="findAll" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from `user`
+    </select>
+
+    <insert id="insert" parameterType="org.ranc.mybatis_audit.model.User" keyColumn="id" useGeneratedKeys="true" keyProperty="id">
+        insert into `user` (username, email)
+        values (#{username,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR})
+    </insert>
+
+    <update id="update" parameterType="org.ranc.mybatis_audit.model.User">
+        update `user`
+        set username = #{username,jdbcType=VARCHAR},
+            email = #{email,jdbcType=VARCHAR}
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <delete id="delete" parameterType="long">
+        delete from `user`
+        where id = #{id,jdbcType=BIGINT}
+    </delete>
+
+</mapper>

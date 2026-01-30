@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="org.ranc.mybatis_audit.repository.ItemMapper">
+    <resultMap id="BaseResultMap" type="org.ranc.mybatis_audit.model.Item">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="price" property="price" jdbcType="INTEGER"/>
+        <result column="version" property="version" jdbcType="BIGINT"/>
+        <result column="created_by" property="createdBy" jdbcType="VARCHAR"/>
+        <result column="updated_by" property="updatedBy" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, price, version, created_by, updated_by, created_at, updated_at
+    </sql>
+
+    <select id="findById" resultMap="BaseResultMap" parameterType="long">
+        select
+        <include refid="Base_Column_List"/>
+        from `item`
+        where id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <select id="findByName" resultMap="BaseResultMap" parameterType="string">
+        select
+        <include refid="Base_Column_List"/>
+        from `item`
+        where name = #{name,jdbcType=VARCHAR}
+    </select>
+
+    <select id="findAll" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from `item`
+    </select>
+
+    <insert id="insert" parameterType="org.ranc.mybatis_audit.model.Item" keyColumn="id" useGeneratedKeys="true" keyProperty="id">
+        insert into `item` (name, price)
+        values (#{name,jdbcType=VARCHAR}, #{price,jdbcType=INTEGER})
+    </insert>
+
+    <update id="update" parameterType="org.ranc.mybatis_audit.model.Item">
+        update `item`
+        set name = #{name,jdbcType=VARCHAR},
+            price = #{price,jdbcType=INTEGER}
+        where id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <delete id="delete" parameterType="long">
+        delete from `item`
+        where id = #{id,jdbcType=BIGINT}
+    </delete>
+
+</mapper>
