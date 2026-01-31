@@ -39,8 +39,46 @@
     </select>
 
     <insert id="insert" parameterType="org.ranc.mybatis_audit.model.Item" keyColumn="id" useGeneratedKeys="true" keyProperty="id">
-        insert into `item` (name, price)
-        values (#{name,jdbcType=VARCHAR}, #{price,jdbcType=INTEGER})
+        insert into `item` (
+            name,
+            price,
+            version,
+            created_by,
+            updated_by,
+            created_at,
+            updated_at)
+        values (
+            #{name,jdbcType=VARCHAR},
+            #{price,jdbcType=INTEGER},
+            #{version,jdbcType=BIGINT},
+            #{createdBy,jdbcType=VARCHAR},
+            #{updatedBy,jdbcType=VARCHAR},
+            #{createdAt,jdbcType=TIMESTAMP},
+            #{updatedAt,jdbcType=TIMESTAMP}
+        )
+    </insert>
+
+    <insert id="insertBatch" parameterType="java.util.List">
+        insert into `item` (
+            name,
+            price,
+            version,
+            created_by,
+            updated_by,
+            created_at,
+            updated_at)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.name,jdbcType=VARCHAR},
+                #{item.price,jdbcType=INTEGER},
+                #{item.version,jdbcType=BIGINT},
+                #{item.createdBy,jdbcType=VARCHAR},
+                #{item.updatedBy,jdbcType=VARCHAR},
+                #{item.createdAt,jdbcType=TIMESTAMP},
+                #{item.updatedAt,jdbcType=TIMESTAMP}
+            )
+        </foreach>
     </insert>
 
     <update id="update" parameterType="org.ranc.mybatis_audit.model.Item">

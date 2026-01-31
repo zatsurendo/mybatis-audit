@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AbstractHistoryAware implements HistoryAware, Serializable {
+public abstract class AbstractHistoryAware implements HistoryAware, Serializable {
     private Long version;
     private Integer revtype;
     private String createdBy;

@@ -17,16 +17,16 @@ CREATE TABLE IF NOT EXISTS `item` (
 );
 
 CREATE TABLE IF NOT EXISTS `item_audit` (
-    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT NOT NULL,
     `name` VARCHAR(100) NOT NULL,
     `price` INTEGER NOT NULL,
-
-    `version` BIGINT DEFAULT NULL,
+    `rev` BIGINT NOT NULL,
     `revtype` INTEGER DEFAULT NULL,
     `created_by` VARCHAR(50) DEFAULT NULL,
     `updated_by` VARCHAR(50) DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT NULL,
-    `updated_at` TIMESTAMP DEFAULT NULL
+    `updated_at` TIMESTAMP DEFAULT NULL,
+    PRIMARY KEY (`id`, `rev`)
 );
 
 CREATE TABLE IF NOT EXISTS `revinfo` (

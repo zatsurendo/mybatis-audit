@@ -16,7 +16,30 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     @Override
     public int createItem(Item item) {
+        if (item.getId() != null) {
+            throw new IllegalArgumentException("New item cannot already have an ID");
+        }
         return mapper.insert(item);
+    }
+    
+    @Transactional
+    @Override
+    public int createItemBatch(List<Item> items) {
+        for (Item item : items) {
+            if (item.getId() != null) {
+                throw new IllegalArgumentException("New item cannot already have an ID");
+            }
+        }
+        return mapper.insertBatch(items);
+    }
+
+    @Transactional
+    @Override
+    public int updateItem(Item item) {
+        if (item.getId() == null) {
+            throw new IllegalArgumentException("Item ID cannot be null for update");
+        }
+        return mapper.update(item);
     }
 
     @Override
@@ -28,4 +51,5 @@ public class ItemServiceImpl implements ItemService {
     public List<Item> findAll() {
         return mapper.findAll();
     }
+
 }

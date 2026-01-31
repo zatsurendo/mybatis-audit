@@ -6,6 +6,8 @@ import org.ranc.mybatis_audit.model.Item;
 
 public interface ItemService {
     int createItem(Item item);
+    int createItemBatch(List<Item> items);
+    int updateItem(Item item);
     Item findById(Long id);
     List<Item> findAll();
 }

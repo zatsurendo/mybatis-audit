@@ -15,17 +15,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 
-import jakarta.annotation.PostConstruct;
+import lombok.extern.log4j.Log4j2;
 
-/** 
+/**
  * @author zatsurendo
  * @date 2026-01-30 07:05:46
  */
+@Log4j2
 @Configuration
 @MapperScan("org.ranc.mybatis_audit.repository")
 @PropertySource(value = "classpath:dbsettings.yml", factory = YamlPropertySourceFactory.class)
 public class MybatisInfraConfig {
-    
+
     @Autowired
     Environment env;
     @Autowired
@@ -43,11 +44,12 @@ public class MybatisInfraConfig {
         bean.setDefaultAutoCommit(Boolean.parseBoolean(env.getProperty("datasource.prod.auto-commit")));
         return bean;
     }
+
     @Bean
     public SqlSessionFactory sqlSessionFactory(DataSource h2DataSource) throws Exception {
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(h2DataSource);
-        factoryBean.setPlugins(new Interceptor[] {auditInterceptor});
+        factoryBean.setPlugins(new Interceptor[] { auditInterceptor });
         return factoryBean.getObject();
     }
 

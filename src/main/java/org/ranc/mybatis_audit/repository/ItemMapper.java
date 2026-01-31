@@ -12,6 +12,7 @@ public interface ItemMapper {
     Item findByName(String name);
     List<Item> findAll();
     int insert(Item item);
+    int insertBatch(List<Item> items);
     int update(Item item);
     int delete(Long id);
 }
