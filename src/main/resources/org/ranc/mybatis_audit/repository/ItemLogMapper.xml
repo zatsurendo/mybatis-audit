@@ -2,12 +2,14 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 
-<mapper namespace="org.ranc.mybatis_audit.repository.ItemMapper">
-    <resultMap id="BaseResultMap" type="org.ranc.mybatis_audit.model.Item">
+<mapper namespace="org.ranc.mybatis_audit.repository.ItemLogMapper">
+    <resultMap id="BaseResultMap" type="org.ranc.mybatis_audit.model.ItemLog">
         <id column="id" property="id" jdbcType="BIGINT"/>
         <result column="name" property="name" jdbcType="VARCHAR"/>
         <result column="price" property="price" jdbcType="INTEGER"/>
         <result column="version" property="version" jdbcType="BIGINT"/>
+        <result column="rev" property="rev" jdbcType="BIGINT"/>
+        <result column="revtype" property="revtype" jdbcType="INTEGER"/>
         <result column="created_by" property="createdBy" jdbcType="VARCHAR"/>
         <result column="updated_by" property="updatedBy" jdbcType="VARCHAR"/>
         <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
@@ -15,42 +17,48 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, name, price, version, created_by, updated_by, created_at, updated_at
+        id, name, price, version, rev, revtype, created_by, updated_by, created_at, updated_at
     </sql>
 
     <select id="findById" resultMap="BaseResultMap" parameterType="long">
         select
         <include refid="Base_Column_List"/>
-        from `item`
+        from `item_log`
         where id = #{id,jdbcType=BIGINT}
     </select>
 
     <select id="findByName" resultMap="BaseResultMap" parameterType="string">
         select
         <include refid="Base_Column_List"/>
-        from `item`
+        from `item_log`
         where name = #{name,jdbcType=VARCHAR}
     </select>
 
     <select id="findAll" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
-        from `item`
+        from `item_log`
     </select>
 
-    <insert id="insert" parameterType="org.ranc.mybatis_audit.model.Item" keyColumn="id" useGeneratedKeys="true" keyProperty="id">
-        insert into `item` (
+    <insert id="insert" parameterType="org.ranc.mybatis_audit.model.ItemLog">
+        insert into `item_log` (
+            id,
             name,
             price,
             version,
+            rev,
+            revtype,
             created_by,
             updated_by,
             created_at,
             updated_at)
         values (
+            #{id,jdbcType=BIGINT},
             #{name,jdbcType=VARCHAR},
             #{price,jdbcType=INTEGER},
             #{version,jdbcType=BIGINT},
+            #{rev,jdbcType=BIGINT},
+            #{revtype,jdbcType=INTEGER},
             #{createdBy,jdbcType=VARCHAR},
             #{updatedBy,jdbcType=VARCHAR},
             #{createdAt,jdbcType=TIMESTAMP},
@@ -58,11 +66,14 @@
         )
     </insert>
 
-    <insert id="insertBatch" parameterType="java.util.List" useGeneratedKeys="true" keyColumn="id" keyProperty="id">
-        insert into `item` (
+    <insert id="insertBatch" parameterType="java.util.List">
+        insert into `item_log` (
+            id,
             name,
             price,
             version,
+            rev,
+            revtype,
             created_by,
             updated_by,
             created_at,
@@ -70,9 +81,12 @@
         values
         <foreach collection="list" item="item" separator=",">
             (
+                #{item.id,jdbcType=BIGINT},
                 #{item.name,jdbcType=VARCHAR},
                 #{item.price,jdbcType=INTEGER},
                 #{item.version,jdbcType=BIGINT},
+                #{item.rev,jdbcType=BIGINT},
+                #{item.revtype,jdbcType=INTEGER},
                 #{item.createdBy,jdbcType=VARCHAR},
                 #{item.updatedBy,jdbcType=VARCHAR},
                 #{item.createdAt,jdbcType=TIMESTAMP},
@@ -86,11 +100,13 @@
         set name = #{name,jdbcType=VARCHAR},
             price = #{price,jdbcType=INTEGER}
         where id = #{id,jdbcType=BIGINT}
+            and rev = #{rev,jdbcType=BIGINT}
     </update>
 
-    <delete id="delete" parameterType="long">
+    <delete id="delete" parameterType="org.ranc.mybatis_audit.model.Item">
         delete from `item`
         where id = #{id,jdbcType=BIGINT}
+            and rev = #{rev,jdbcType=BIGINT}
     </delete>
 
 </mapper>

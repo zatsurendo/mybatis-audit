@@ -16,12 +16,15 @@ CREATE TABLE IF NOT EXISTS `item` (
     `updated_at` TIMESTAMP DEFAULT NULL
 );
 
-CREATE TABLE IF NOT EXISTS `item_audit` (
+CREATE TABLE IF NOT EXISTS `item_log` (
     `id` BIGINT NOT NULL,
     `name` VARCHAR(100) NOT NULL,
     `price` INTEGER NOT NULL,
+
     `rev` BIGINT NOT NULL,
     `revtype` INTEGER DEFAULT NULL,
+    
+    `version` BIGINT DEFAULT NULL,
     `created_by` VARCHAR(50) DEFAULT NULL,
     `updated_by` VARCHAR(50) DEFAULT NULL,
     `created_at` TIMESTAMP DEFAULT NULL,

@@ -10,9 +10,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public abstract class AbstractHistoryAware implements HistoryAware, Serializable {
+public abstract class AbstractAuditAware implements AuditAware, VersionAware, Serializable {
     private Long version;
-    private Integer revtype;
     private String createdBy;
     private String updatedBy;
     private OffsetDateTime createdAt;

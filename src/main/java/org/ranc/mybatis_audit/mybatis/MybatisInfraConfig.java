@@ -7,9 +7,10 @@ import org.apache.ibatis.plugin.Interceptor;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.annotation.MapperScan;
+import org.ranc.mybatis_audit.mybatis.audit.plugin.AuditInterceptor;
+import org.ranc.mybatis_audit.spring.ApplicationContextHolder;
 import org.ranc.mybatis_audit.spring.YamlPropertySourceFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -30,8 +31,7 @@ public class MybatisInfraConfig {
     @Autowired
     Environment env;
     @Autowired
-    @Qualifier("auditInterceptor")
-    private Interceptor auditInterceptor;
+    ApplicationContextHolder applicationContextHolder;
 
     @Bean
     public DataSource h2Datasource() {
@@ -47,10 +47,11 @@ public class MybatisInfraConfig {
 
     @Bean
     public SqlSessionFactory sqlSessionFactory(DataSource h2DataSource) throws Exception {
+
+        AuditInterceptor auditInterceptor = ApplicationContextHolder.getBean("auditInterceptor", AuditInterceptor.class);
         SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
         factoryBean.setDataSource(h2DataSource);
         factoryBean.setPlugins(new Interceptor[] { auditInterceptor });
         return factoryBean.getObject();
     }
-
 }

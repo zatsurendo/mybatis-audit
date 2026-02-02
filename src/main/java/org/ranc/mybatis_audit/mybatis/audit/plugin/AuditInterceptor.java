@@ -1,5 +1,6 @@
 package org.ranc.mybatis_audit.mybatis.audit.plugin;
 
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.Collection;
@@ -14,56 +15,115 @@ import org.apache.ibatis.plugin.Invocation;
 import org.apache.ibatis.plugin.Signature;
 import org.ranc.mybatis_audit.mybatis.audit.AuditContext;
 import org.ranc.mybatis_audit.mybatis.audit.AuditContextHolder;
+import org.ranc.mybatis_audit.mybatis.audit.annotation.HistoryPersistable;
+import org.ranc.mybatis_audit.mybatis.audit.annotation.NoAudit;
 import org.ranc.mybatis_audit.mybatis.audit.model.AuditAware;
-import org.ranc.mybatis_audit.mybatis.audit.model.VersionPersistable;
+import org.ranc.mybatis_audit.mybatis.audit.model.HistoryAware;
+import org.ranc.mybatis_audit.mybatis.audit.model.VersionAware;
+import org.ranc.mybatis_audit.spring.ApplicationContextHolder;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 
 @Component("auditInterceptor")
 @Intercepts({
-    @Signature(
-        type = Executor.class,
-        method = "update",
-        args = {MappedStatement.class, Object.class}
-    )
+        @Signature(type = Executor.class, method = "update", args = { MappedStatement.class, Object.class })
 })
 public class AuditInterceptor implements Interceptor {
-    
+
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
-        
+
         AuditContext auditContext = AuditContextHolder.getTransactionId();
         if (auditContext == null) {
             // トランザクションIDが設定されていない場合は何もしない
             return invocation.proceed();
         }
-        
+
         // MappedStatementからSQLの種類などを取得
         MappedStatement mappedStatement = (MappedStatement) invocation.getArgs()[0];
         // パラメータオブジェクトを取得
         Object parameter = invocation.getArgs()[1];
-
+        // SQLの種類を取得
         SqlCommandType type = mappedStatement.getSqlCommandType();
 
-        if (parameter instanceof AuditAware) {
+        // パラメータオブジェクトがAuditAwareの実装クラスの場合、監査情報を設定する
+        if (parameter instanceof AuditAware && !parameter.getClass().isAnnotationPresent(NoAudit.class)) {
             AuditAware auditAware = (AuditAware) parameter;
             setAuditFields(auditAware, auditContext, type);
-            return invocation.proceed();
+            Object result = invocation.proceed();
+            Class<?> clazz = parameter.getClass();
+            if (clazz.isAnnotationPresent(HistoryPersistable.class)) {
+                saveHistoryRecord(parameter, auditContext, type);
+            }
+            return result;
         }
+
+        // パラメータオブジェクトがParamMapの場合、値の中にAuditAwareの実装クラスが含まれているか確認する
         if (parameter instanceof MapperMethod.ParamMap) {
-             MapperMethod.ParamMap<?> params = (MapperMethod.ParamMap<?>) parameter;
+            MapperMethod.ParamMap<?> params = (MapperMethod.ParamMap<?>) parameter;
             Object obj = params.values().toArray()[0];
             if (obj instanceof Collection) {
                 Collection<?> coll = (Collection<?>) obj;
                 for (Object item : coll) {
-                    if (item instanceof AuditAware) {
+                    if (item instanceof AuditAware && !item.getClass().isAnnotationPresent(NoAudit.class)) {
                         AuditAware auditAware = (AuditAware) item;
                         setAuditFields(auditAware, auditContext, type);
                     }
                 }
             }
-            return invocation.proceed();
+            Object result = invocation.proceed();
+            if (obj instanceof Collection) {
+                Collection<?> coll = (Collection<?>) obj;
+                for (Object item : coll) {
+                    Class<?> clazz = item.getClass();
+                    if (clazz.isAnnotationPresent(HistoryPersistable.class)) {
+                        saveHistoryRecord(item, auditContext, type);
+                    }
+                }
+            }
+            return result;
         }
         return invocation.proceed();
+    }
+
+    protected void saveHistoryRecord(Object object, AuditContext auditContext, SqlCommandType type) {
+        // 対象レコードのクラス名
+        String className = object.getClass().getName();
+        // 対象レコードのクラス名 + "Log" がログクラス名
+        String logClassName = object.getClass().getName() + "Log";
+        try {
+            // ログクラス名からクラスを取得
+            Class<?> logClass = Class.forName(logClassName);
+            // ログクラスのインスタンスを生成
+            Object logOjbect = logClass.getDeclaredConstructor().newInstance();
+            // HistoryAwareの場合は、revtypeとrevを設定
+            if (logOjbect instanceof HistoryAware) {
+                int revtype = type == SqlCommandType.INSERT ? 1
+                        : type == SqlCommandType.UPDATE ? 2 : type == SqlCommandType.DELETE ? 3 : 0;
+                HistoryAware historyAware = (HistoryAware) logOjbect;
+                historyAware.setRevtype(revtype);
+                historyAware.setRev(auditContext.getRevinfo().getRev());
+            }
+            // コピー元オブジェクトのプロパティをログオブジェクトにコピー
+            BeanUtils.copyProperties(object, logOjbect);
+
+            // マッパークラスのクラス名を生成する 基底パス ＋ 元クラス名 ＋ "Mapper"
+            String mapperClassName = "org.ranc.mybatis_audit.repository." + logClass.getSimpleName() + "Mapper";
+            // マッパークラス名からクラスを取得
+            Class<?> mapperClass = Class.forName(mapperClassName);
+            // マッパークラスのinsertメソッドを取得して実行
+            Method method = mapperClass.getMethod("insert", logClass);
+            // マッパークラスのBean名を生成
+            String beanName = Character.toLowerCase(mapperClass.getSimpleName().charAt(0)) +
+                    mapperClass.getSimpleName().substring(1);
+            // マッパークラスのBeanを取得
+            Object instance = ApplicationContextHolder.getBean(beanName, mapperClass);
+            // マッパーBean のメソッドを実行する
+            Object result = method.invoke(instance, logOjbect);
+        } catch (Exception e) {
+            // Nop
+            throw new RuntimeException("Failed to save history record for " + className, e);
+        }
     }
 
     protected void setAuditFields(AuditAware auditAware, AuditContext auditContext, SqlCommandType type) {
@@ -76,13 +136,8 @@ public class AuditInterceptor implements Interceptor {
             auditAware.setCreatedBy(auditUser);
             auditAware.setCreatedAt(ts);
         }
-        if (auditAware instanceof VersionPersistable) {
-            VersionPersistable vp = (VersionPersistable) auditAware;
-            int revtype = type == SqlCommandType.INSERT ? 1
-                    : type == SqlCommandType.UPDATE ? 2
-                    : type == SqlCommandType.DELETE ? 3
-                    : 0;
-            vp.setRevtype(revtype);
+        if (auditAware instanceof VersionAware) {
+            VersionAware vp = (VersionAware) auditAware;
             if (type != SqlCommandType.INSERT) {
                 vp.setVersion(vp.getVersion() + 1);
             } else {
