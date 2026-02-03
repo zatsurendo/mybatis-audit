@@ -24,6 +24,9 @@ import org.ranc.mybatis_audit.spring.ApplicationContextHolder;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component("auditInterceptor")
 @Intercepts({
         @Signature(type = Executor.class, method = "update", args = { MappedStatement.class, Object.class })
@@ -48,12 +51,15 @@ public class AuditInterceptor implements Interceptor {
 
         // パラメータオブジェクトがAuditAwareの実装クラスの場合、監査情報を設定する
         if (parameter instanceof AuditAware && !parameter.getClass().isAnnotationPresent(NoAudit.class)) {
-            AuditAware auditAware = (AuditAware) parameter;
-            setAuditFields(auditAware, auditContext, type);
+            processAudit(parameter, auditContext, type);
+            // クエリを実行
             Object result = invocation.proceed();
-            Class<?> clazz = parameter.getClass();
-            if (clazz.isAnnotationPresent(HistoryPersistable.class)) {
-                saveHistoryRecord(parameter, auditContext, type);
+            if (type == SqlCommandType.INSERT) {
+                // INSERTの場合は invocation.proceed() の後に履歴保存を行う
+                if (!parameter.getClass().isAnnotationPresent(NoAudit.class)) {
+                    // @NoAudit が付与されていなければ履歴を保存
+                    processHistory(parameter, auditContext, type);
+                }
             }
             return result;
         }
@@ -65,32 +71,53 @@ public class AuditInterceptor implements Interceptor {
             if (obj instanceof Collection) {
                 Collection<?> coll = (Collection<?>) obj;
                 for (Object item : coll) {
-                    if (item instanceof AuditAware && !item.getClass().isAnnotationPresent(NoAudit.class)) {
-                        AuditAware auditAware = (AuditAware) item;
-                        setAuditFields(auditAware, auditContext, type);
+                    processAudit(item, auditContext, type);
+                }
+                // クエリを実行
+                Object result = invocation.proceed();
+                
+                if (type == SqlCommandType.INSERT) {
+                    // INSERTの場合は invocation.proceed() の後に履歴保存を行う
+                    for (Object item : coll) {
+                        processHistory(item, auditContext, type);
                     }
                 }
+                return result;
             }
-            Object result = invocation.proceed();
-            if (obj instanceof Collection) {
-                Collection<?> coll = (Collection<?>) obj;
-                for (Object item : coll) {
-                    Class<?> clazz = item.getClass();
-                    if (clazz.isAnnotationPresent(HistoryPersistable.class)) {
-                        saveHistoryRecord(item, auditContext, type);
-                    }
-                }
-            }
-            return result;
         }
+        // 本来のクエリを実行
         return invocation.proceed();
+    }
+
+    protected void processAudit(Object parameter, AuditContext auditContext, SqlCommandType type)
+            throws Throwable {
+        
+        // AuditAware を継承していて、@NoAudit が付与されていなければ監査情報を設定
+        if (parameter instanceof AuditAware && !parameter.getClass().isAnnotationPresent(NoAudit.class)) {
+            AuditAware auditAware = (AuditAware) parameter;
+            setAuditFields(auditAware, auditContext, type);
+            if (type != SqlCommandType.INSERT && parameter.getClass().isAnnotationPresent(HistoryPersistable.class)) {
+                // INSERT 以外は履歴を保存
+                saveHistoryRecord(parameter, auditContext, type);
+            }
+        }
+    }
+
+    protected void processHistory(Object parameter, AuditContext auditContext, SqlCommandType type)
+            throws Throwable {
+        
+        Class<?> clazz = parameter.getClass();
+        // HistoryPersistable を継承していて、@NoAudit が付与されていなければ履歴を保存
+        if (clazz.isAnnotationPresent(HistoryPersistable.class) && !parameter.getClass().isAnnotationPresent(NoAudit.class)) {
+            saveHistoryRecord(parameter, auditContext, type);
+        }
     }
 
     protected void saveHistoryRecord(Object object, AuditContext auditContext, SqlCommandType type) {
         // 対象レコードのクラス名
         String className = object.getClass().getName();
         // 対象レコードのクラス名 + "Log" がログクラス名
-        String logClassName = object.getClass().getName() + "Log";
+        String logClassName = className + "Log";
         try {
             // ログクラス名からクラスを取得
             Class<?> logClass = Class.forName(logClassName);
@@ -120,6 +147,7 @@ public class AuditInterceptor implements Interceptor {
             Object instance = ApplicationContextHolder.getBean(beanName, mapperClass);
             // マッパーBean のメソッドを実行する
             Object result = method.invoke(instance, logOjbect);
+            log.debug("Saved {} history record for {}: {}", result, className, logOjbect);
         } catch (Exception e) {
             // Nop
             throw new RuntimeException("Failed to save history record for " + className, e);
@@ -131,11 +159,12 @@ public class AuditInterceptor implements Interceptor {
                 .atOffset(OffsetDateTime.now().getOffset());
         String auditUser = auditContext.getRemoteUser() + "@" + auditContext.getRemoteHost();
 
+        // 新規登録の場合のみ作成者情報を設定
         if (type == SqlCommandType.INSERT) {
-            // 新規登録の場合のみ作成者情報を設定
             auditAware.setCreatedBy(auditUser);
             auditAware.setCreatedAt(ts);
         }
+        // バージョン情報を設定
         if (auditAware instanceof VersionAware) {
             VersionAware vp = (VersionAware) auditAware;
             if (type != SqlCommandType.INSERT) {
@@ -144,6 +173,7 @@ public class AuditInterceptor implements Interceptor {
                 vp.setVersion(1L);
             }
         }
+        // 更新者情報を設定
         auditAware.setUpdatedBy(auditUser);
         auditAware.setUpdatedAt(ts);
         System.out.println("BindParamInterceptor intercepted AuditAware parameter in Collection: " + auditAware);
